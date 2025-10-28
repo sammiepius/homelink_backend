@@ -1,6 +1,5 @@
 import prisma from '../../src/prismaClient.js';
 
-
 export const createProperty = async (req, res) => {
   const {
     title,
@@ -32,7 +31,7 @@ export const createProperty = async (req, res) => {
         description,
         price: parseFloat(price),
         location,
-        images: JSON.stringify(images || []), // ✅ store as JSON
+        images: images ? JSON.stringify(images) : null, // ✅ store as JSON
         type,
         bedrooms: bedrooms ? parseInt(bedrooms) : null,
         bathrooms: bathrooms ? parseInt(bathrooms) : null,
@@ -57,8 +56,11 @@ export const getAllProperties = async (req, res) => {
       include: { landlord: { select: { id: true, name: true, email: true } } },
       orderBy: { createdAt: 'desc' },
     });
-
-    res.json(properties);
+    const formatted = properties.map((p) => ({
+      ...p,
+      images: p.images ? JSON.parse(p.images) : [],
+    }));
+    res.status(200).json(formatted);
   } catch (error) {
     console.error('Error fetching properties:', error);
     res.status(500).json({ message: 'Failed to fetch properties' });
@@ -67,22 +69,28 @@ export const getAllProperties = async (req, res) => {
 
 // Get single property by ID
 export const getPropertyById = async (req, res) => {
-  const { id } = req.params;
   try {
+    const { id } = req.params;
+
     const property = await prisma.property.findUnique({
       where: { id: parseInt(id) },
-      include: { landlord: true },
+      // include: { landlord: true },
     });
 
-    if (!property)
+    if (!property) {
       return res.status(404).json({ message: 'Property not found' });
-    res.json(property);
+    }
+    res.status(200).json({
+      ...property,
+      images: property.images ? JSON.parse(property.images) : [],
+    });
   } catch (error) {
     console.error('Error fetching property:', error);
     res.status(500).json({ message: 'Failed to fetch property' });
   }
 };
 
+// delete property
 export const deleteProperty = async (req, res) => {
   const { id } = req.params;
   const landlordId = req.user.id;

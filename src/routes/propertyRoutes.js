@@ -8,7 +8,7 @@ import {
 
 const router = express.Router();
 
-router.post('/', protect, createProperty);
+router.post('/add', protect, createProperty);
 router.get('/', getAllProperties); // Public: all listings
 router.get('/:id', getPropertyById);
 

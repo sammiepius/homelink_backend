@@ -2,17 +2,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import prisma from '../../src/prismaClient.js';
+import cloudinary from '../util/cloudinary.js';
 
 dotenv.config();
 
 // Helper function to generate JWT token
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '5h' });
 };
 
 // ---------- SIGNUP CONTROLLER ----------
 export const signup = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, phone } = req.body;
 
   try {
     // Check if user already exists
@@ -31,6 +32,8 @@ export const signup = async (req, res) => {
         email,
         password: hashedPassword,
         role: role || 'tenant', // default role
+        phone: phone || null,
+        profilePhoto: null,
       },
     });
 
@@ -43,6 +46,7 @@ export const signup = async (req, res) => {
         name: newUser.name,
         email: newUser.email,
         role: newUser.role,
+        phone: newUser.phone,
       },
     });
   } catch (error) {
@@ -79,5 +83,67 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed. Please try again later.' });
+  }
+};
+
+export const getProfile = async (req, res) => {
+  try{
+    const user = await prisma.user.findUnique({
+      where:{id:req.user.id},
+      select:{
+        id:true,
+        name:true,
+        email:true,
+        phone:true,
+        profilePhoto:true,
+        role:true,
+      }
+    })
+    res.status(200).json(user)
+  }catch(error){
+    console.error("Get profile:", error)
+    res.status(500).json({message:"failed to fetch user profile"})
+  }
+};
+
+//Update profile
+export const updateProfile = async (req, res) => {
+  console.log('📸 Incoming file:', req.file);
+
+  try {
+    const userId = req.user.id; // from protect middleware
+    const { name, phone } = req.body;
+    // let profilePhotoUrl = null;
+
+    const updateData = {};
+
+    if (name && name.trim() !== '') updateData.name = name;
+    if (phone && phone.trim() !== '') updateData.phone = phone;
+
+    // ✅ FIXED: use req.file, not file
+    if (req.file) {
+      const upload = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'homelink_profiles',
+      });
+      updateData.profilePhoto = upload.secure_url;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'No data provided for update' });
+    }
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('Profile Update Error:', error);
+    res
+      .status(500)
+      .json({ message: 'Failed to update profile', error: error.message });
   }
 };
