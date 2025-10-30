@@ -90,6 +90,22 @@ export const getPropertyById = async (req, res) => {
   }
 };
 
+//Get all properties posted by loggedin landlord
+export const getMyListing = async (req, res) => {
+  try {
+    const landlordId = req.user.id;
+
+    const myProperties = await prisma.property.findMany({
+      where: { landlordId: landlordId },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.status(200).json(myProperties);
+  } catch (error) {
+    console.error('Error fetching landlord properties', error);
+    res.status(500).json({ message: 'Failed to fetch property', error });
+  }
+};
+
 // delete property
 export const deleteProperty = async (req, res) => {
   const { id } = req.params;
