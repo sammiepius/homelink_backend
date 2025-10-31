@@ -133,3 +133,66 @@ export const deleteProperty = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete property' });
   }
 };
+
+// UPDATE PROPERTY
+export const updateProperty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const landlordId = req.user.id; // protect middleware
+    const { title, description, price, location, type, bedrooms, bathrooms } =
+      req.body;
+
+    // Make sure property exists and belongs to the landlord
+    const property = await prisma.property.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!property) {
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    if (property.landlordId !== landlordId) {
+      return res
+        .status(403)
+        .json({ message: 'Not authorized to edit this property' });
+    }
+
+    let imageUrls = property.images || [];
+
+    // If new image files are uploaded, upload them to Cloudinary
+    if (req.files && req.files.length > 0) {
+      const uploadedImages = await Promise.all(
+        req.files.map(async (file) => {
+          const upload = await cloudinary.uploader.upload(file.path, {
+            folder: 'homelink_properties',
+          });
+          return upload.secure_url;
+        })
+      );
+      imageUrls = [...imageUrls, ...uploadedImages];
+    }
+
+    // Update property
+    const updatedProperty = await prisma.property.update({
+      where: { id: parseInt(id) },
+      data: {
+        title,
+        description,
+        price: parseFloat(price),
+        location,
+        type,
+        bedrooms: bedrooms ? parseInt(bedrooms) : null,
+        bathrooms: bathrooms ? parseInt(bathrooms) : null,
+        images: images ? JSON.stringify(images) : null,
+      },
+    });
+
+    res.status(200).json({
+      message: 'Property updated successfully',
+      property: updatedProperty,
+    });
+  } catch (error) {
+    console.error('Property update error:', error);
+    res.status(500).json({ message: 'Failed to update property', error });
+  }
+};
