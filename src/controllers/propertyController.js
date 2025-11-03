@@ -1,4 +1,5 @@
 import prisma from '../../src/prismaClient.js';
+import cloudinary from '../util/cloudinary.js';
 
 export const createProperty = async (req, res) => {
   const {
@@ -91,7 +92,7 @@ export const getPropertyById = async (req, res) => {
 };
 
 //Get all properties posted by loggedin landlord
-export const getMyListing = async (req, res) => {
+export const getMyProperty = async (req, res) => {
   try {
     const landlordId = req.user.id;
 
@@ -135,14 +136,76 @@ export const deleteProperty = async (req, res) => {
 };
 
 // UPDATE PROPERTY
+// export const updateProperty = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const landlordId = req.user.id; // protect middleware
+//     const { title, description, price, location, type, bedrooms, bathrooms } =
+//       req.body;
+
+//     // Make sure property exists and belongs to the landlord
+//     const property = await prisma.property.findUnique({
+//       where: { id: parseInt(id) },
+//     });
+
+//     if (!property) {
+//       return res.status(404).json({ message: 'Property not found' });
+//     }
+
+//     if (property.landlordId !== landlordId) {
+//       return res
+//         .status(403)
+//         .json({ message: 'Not authorized to edit this property' });
+//     }
+
+//     let imageUrls = property.images || [];
+
+//     // If new image files are uploaded, upload them to Cloudinary
+//     if (req.files && req.files.length > 0) {
+//       const uploadedImages = await Promise.all(
+//         req.files.map(async (file) => {
+//           const upload = await cloudinary.uploader.upload(file.path, {
+//             folder: 'homelink_properties',
+//           });
+//           return upload.secure_url;
+//         })
+//       );
+//       imageUrls = [...imageUrls, ...uploadedImages];
+//     }
+
+//     // Update property
+//     const updatedProperty = await prisma.property.update({
+//       where: { id: parseInt(id) },
+//       data: {
+//         title,
+//         description,
+//         price: parseFloat(price),
+//         location,
+//         type,
+//         bedrooms: bedrooms ? parseInt(bedrooms) : null,
+//         bathrooms: bathrooms ? parseInt(bathrooms) : null,
+//         images: images ? JSON.stringify(images) : null,
+//       },
+//     });
+
+//     res.status(200).json({
+//       message: 'Property updated successfully',
+//       property: updatedProperty,
+//     });
+//   } catch (error) {
+//     console.error('Property update error:', error);
+//     res.status(500).json({ message: 'Failed to update property', error });
+//   }
+// };
+
 export const updateProperty = async (req, res) => {
   try {
     const { id } = req.params;
-    const landlordId = req.user.id; // protect middleware
+    const landlordId = req.user.id; // From protect middleware
     const { title, description, price, location, type, bedrooms, bathrooms } =
       req.body;
 
-    // Make sure property exists and belongs to the landlord
+    // 1️⃣ Find the property and verify ownership
     const property = await prisma.property.findUnique({
       where: { id: parseInt(id) },
     });
@@ -157,9 +220,9 @@ export const updateProperty = async (req, res) => {
         .json({ message: 'Not authorized to edit this property' });
     }
 
-    let imageUrls = property.images || [];
+    // 2️⃣ Handle image uploads if new files exist
+    let updatedImages = property.images ? JSON.parse(property.images) : [];
 
-    // If new image files are uploaded, upload them to Cloudinary
     if (req.files && req.files.length > 0) {
       const uploadedImages = await Promise.all(
         req.files.map(async (file) => {
@@ -169,21 +232,21 @@ export const updateProperty = async (req, res) => {
           return upload.secure_url;
         })
       );
-      imageUrls = [...imageUrls, ...uploadedImages];
+      updatedImages = [...updatedImages, ...uploadedImages];
     }
 
-    // Update property
+    // 3️⃣ Update property details
     const updatedProperty = await prisma.property.update({
       where: { id: parseInt(id) },
       data: {
-        title,
-        description,
-        price: parseFloat(price),
-        location,
-        type,
-        bedrooms: bedrooms ? parseInt(bedrooms) : null,
-        bathrooms: bathrooms ? parseInt(bathrooms) : null,
-        images: images ? JSON.stringify(images) : null,
+        title: title || property.title,
+        description: description || property.description,
+        price: price ? parseFloat(price) : property.price,
+        location: location || property.location,
+        type: type || property.type,
+        bedrooms: bedrooms ? parseInt(bedrooms) : property.bedrooms,
+        bathrooms: bathrooms ? parseInt(bathrooms) : property.bathrooms,
+        images: JSON.stringify(updatedImages),
       },
     });
 
@@ -192,7 +255,9 @@ export const updateProperty = async (req, res) => {
       property: updatedProperty,
     });
   } catch (error) {
-    console.error('Property update error:', error);
-    res.status(500).json({ message: 'Failed to update property', error });
+    console.error('❌ Property update error:', error);
+    res
+      .status(500)
+      .json({ message: 'Failed to update property', error: error.message });
   }
 };
