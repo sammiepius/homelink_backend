@@ -100,7 +100,12 @@ export const getMyProperty = async (req, res) => {
       where: { landlordId: landlordId },
       orderBy: { createdAt: 'desc' },
     });
-    res.status(200).json(myProperties);
+
+    const formatted = myProperties.map((p) => ({
+      ...p,
+      images: p.images ? JSON.parse(p.images) : [],
+    }));
+    res.status(200).json(formatted);
   } catch (error) {
     console.error('Error fetching landlord properties', error);
     res.status(500).json({ message: 'Failed to fetch property', error });
