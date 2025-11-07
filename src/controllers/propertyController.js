@@ -113,42 +113,11 @@ export const getMyProperty = async (req, res) => {
 };
 
 // delete property
-export const deleteProperty = async (req, res) => {
-  const { id } = req.params;
-  const landlordId = req.user.id;
+// export const deleteProperty = async (req, res) => {
+//   const { id } = req.params;
+//   const landlordId = req.user.id;
 
-  try {
-    const property = await prisma.property.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!property) {
-      return res.status(404).json({ message: 'Property not found' });
-    }
-
-    if (property.landlordId !== parseInt(landlordId)) {
-      return res
-        .status(403)
-        .json({ message: 'Not authorized to delete this property' });
-    }
-
-    await prisma.property.delete({ where: { id: parseInt(id) } });
-    res.json({ message: 'Property deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting property:', error);
-    res.status(500).json({ message: 'Failed to delete property' });
-  }
-};
-
-// UPDATE PROPERTY
-// export const updateProperty = async (req, res) => {
 //   try {
-//     const { id } = req.params;
-//     const landlordId = req.user.id; // protect middleware
-//     const { title, description, price, location, type, bedrooms, bathrooms } =
-//       req.body;
-
-//     // Make sure property exists and belongs to the landlord
 //     const property = await prisma.property.findUnique({
 //       where: { id: parseInt(id) },
 //     });
@@ -157,49 +126,17 @@ export const deleteProperty = async (req, res) => {
 //       return res.status(404).json({ message: 'Property not found' });
 //     }
 
-//     if (property.landlordId !== landlordId) {
+//     if (property.landlordId !== parseInt(landlordId)) {
 //       return res
 //         .status(403)
-//         .json({ message: 'Not authorized to edit this property' });
+//         .json({ message: 'Not authorized to delete this property' });
 //     }
 
-//     let imageUrls = property.images || [];
-
-//     // If new image files are uploaded, upload them to Cloudinary
-//     if (req.files && req.files.length > 0) {
-//       const uploadedImages = await Promise.all(
-//         req.files.map(async (file) => {
-//           const upload = await cloudinary.uploader.upload(file.path, {
-//             folder: 'homelink_properties',
-//           });
-//           return upload.secure_url;
-//         })
-//       );
-//       imageUrls = [...imageUrls, ...uploadedImages];
-//     }
-
-//     // Update property
-//     const updatedProperty = await prisma.property.update({
-//       where: { id: parseInt(id) },
-//       data: {
-//         title,
-//         description,
-//         price: parseFloat(price),
-//         location,
-//         type,
-//         bedrooms: bedrooms ? parseInt(bedrooms) : null,
-//         bathrooms: bathrooms ? parseInt(bathrooms) : null,
-//         images: images ? JSON.stringify(images) : null,
-//       },
-//     });
-
-//     res.status(200).json({
-//       message: 'Property updated successfully',
-//       property: updatedProperty,
-//     });
+//     await prisma.property.delete({ where: { id: parseInt(id) } });
+//     res.json({ message: 'Property deleted successfully' });
 //   } catch (error) {
-//     console.error('Property update error:', error);
-//     res.status(500).json({ message: 'Failed to update property', error });
+//     console.error('Error deleting property:', error);
+//     res.status(500).json({ message: 'Failed to delete property' });
 //   }
 // };
 
@@ -264,5 +201,144 @@ export const updateProperty = async (req, res) => {
     res
       .status(500)
       .json({ message: 'Failed to update property', error: error.message });
+  }
+};
+
+export const deletePropertyImage = async (req, res) => {
+  try {
+    const { id } = req.params; // property ID
+    const landlordId = req.user.id;
+    const { imageUrl } = req.body; // URL of image to delete
+
+    const property = await prisma.property.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!property) {
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    if (property.landlordId !== landlordId) {
+      return res
+        .status(403)
+        .json({ message: 'Not authorized to edit this property' });
+    }
+
+    // Parse stored image JSON (if any)
+    let images = [];
+    try {
+      images = JSON.parse(property.images || '[]');
+    } catch (e) {
+      images = [];
+    }
+
+    // Remove the image from Cloudinary (optional, only if you store public_id)
+    // await cloudinary.uploader.destroy(publicIdFromUrl(imageUrl));
+
+    // Filter out deleted image
+    const updatedImages = images.filter((url) => url !== imageUrl);
+
+    // Save updated images as a JSON string
+    const updatedProperty = await prisma.property.update({
+      where: { id: parseInt(id) },
+      data: {
+        images: JSON.stringify(updatedImages),
+      },
+    });
+
+    res.status(200).json({
+      message: 'Image deleted successfully',
+      property: {
+        ...updatedProperty,
+        images: updatedImages, // send parsed version back
+      },
+    });
+  } catch (error) {
+    console.error('❌ Delete property image error:', error);
+    res.status(500).json({ message: 'Failed to delete image', error });
+  }
+};
+
+// DELETE PROPERTY
+export const deleteProperty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const landlordId = req.user.id; // from auth middleware
+
+    // ✅ Validate and parse the ID safely
+    if (!id || isNaN(id)) {
+      return res
+        .status(400)
+        .json({ message: 'Invalid or missing property ID' });
+    }
+    const propertyId = parseInt(id, 10);
+
+    // ✅ Find the property
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+    });
+
+    if (!property) {
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    // ✅ Check ownership
+    if (property.landlordId !== landlordId) {
+      return res
+        .status(403)
+        .json({ message: 'Not authorized to delete this property' });
+    }
+
+    // ✅ (Optional) Delete images from Cloudinary if applicable
+    // Optional: Delete images from Cloudinary if stored there
+if (property.images) {
+  let imageArray = property.images;
+
+  // If stored as JSON string, parse it
+  if (typeof imageArray === "string") {
+    try {
+      imageArray = JSON.parse(imageArray);
+    } catch (err) {
+      console.warn("Image JSON parsing failed:", err.message);
+      imageArray = [];
+    }
+  }
+
+  if (Array.isArray(imageArray) && imageArray.length > 0) {
+    const extractPublicId = (url) => {
+      const parts = url.split("/");
+      const filename = parts[parts.length - 1];
+      return filename.split(".")[0];
+    };
+
+    await Promise.all(
+      imageArray.map(async (url) => {
+        const publicId = extractPublicId(url);
+        try {
+          await cloudinary.uploader.destroy(`homelink_properties/${publicId}`);
+        } catch (err) {
+          console.warn("Cloudinary deletion failed:", err.message);
+        }
+      })
+    );
+  }
+}
+
+    // ✅ Delete property from database
+    await prisma.property.delete({
+      where: { id: propertyId },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Property deleted successfully',
+    });
+  } catch (error) {
+    console.error('Property deletion error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete property',
+      error: error.message,
+    });
   }
 };
