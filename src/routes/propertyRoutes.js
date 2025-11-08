@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect } from '../middlewares/authMiddleware.js';
+import { authorizeRoles, checkOwnership, landlordOnly, protect } from '../middlewares/authMiddleware.js';
 import {
   createProperty,
   deleteProperty,
@@ -14,12 +14,12 @@ import multer from 'multer';
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-router.post('/add', protect, createProperty);
-router.get('/my-property', protect, getMyProperty);
+router.post('/add', protect,authorizeRoles("LANDLORD"), createProperty);
+router.get('/my-property', protect, authorizeRoles("LANDLORD"), getMyProperty);
 router.get('/', getAllProperties); // Public: all listings
 router.get('/:id', getPropertyById);
-router.put('/update/:id', protect, upload.array('images'), updateProperty);
-router.delete('/:id/image', protect, deletePropertyImage);
-router.delete('/:id', protect, deleteProperty);
+router.put('/update/:id', protect,authorizeRoles("LANDLORD"),checkOwnership, upload.array('images'), updateProperty);
+router.delete('/:id/image', protect, authorizeRoles("LANDLORD"), checkOwnership, deletePropertyImage);
+router.delete('/:id', protect, authorizeRoles("LANDLORD"), checkOwnership, deleteProperty);
 
 export default router;

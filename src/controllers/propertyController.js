@@ -112,34 +112,6 @@ export const getMyProperty = async (req, res) => {
   }
 };
 
-// delete property
-// export const deleteProperty = async (req, res) => {
-//   const { id } = req.params;
-//   const landlordId = req.user.id;
-
-//   try {
-//     const property = await prisma.property.findUnique({
-//       where: { id: parseInt(id) },
-//     });
-
-//     if (!property) {
-//       return res.status(404).json({ message: 'Property not found' });
-//     }
-
-//     if (property.landlordId !== parseInt(landlordId)) {
-//       return res
-//         .status(403)
-//         .json({ message: 'Not authorized to delete this property' });
-//     }
-
-//     await prisma.property.delete({ where: { id: parseInt(id) } });
-//     res.json({ message: 'Property deleted successfully' });
-//   } catch (error) {
-//     console.error('Error deleting property:', error);
-//     res.status(500).json({ message: 'Failed to delete property' });
-//   }
-// };
-
 export const updateProperty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -291,38 +263,40 @@ export const deleteProperty = async (req, res) => {
 
     // ✅ (Optional) Delete images from Cloudinary if applicable
     // Optional: Delete images from Cloudinary if stored there
-if (property.images) {
-  let imageArray = property.images;
+    if (property.images) {
+      let imageArray = property.images;
 
-  // If stored as JSON string, parse it
-  if (typeof imageArray === "string") {
-    try {
-      imageArray = JSON.parse(imageArray);
-    } catch (err) {
-      console.warn("Image JSON parsing failed:", err.message);
-      imageArray = [];
-    }
-  }
-
-  if (Array.isArray(imageArray) && imageArray.length > 0) {
-    const extractPublicId = (url) => {
-      const parts = url.split("/");
-      const filename = parts[parts.length - 1];
-      return filename.split(".")[0];
-    };
-
-    await Promise.all(
-      imageArray.map(async (url) => {
-        const publicId = extractPublicId(url);
+      // If stored as JSON string, parse it
+      if (typeof imageArray === 'string') {
         try {
-          await cloudinary.uploader.destroy(`homelink_properties/${publicId}`);
+          imageArray = JSON.parse(imageArray);
         } catch (err) {
-          console.warn("Cloudinary deletion failed:", err.message);
+          console.warn('Image JSON parsing failed:', err.message);
+          imageArray = [];
         }
-      })
-    );
-  }
-}
+      }
+
+      if (Array.isArray(imageArray) && imageArray.length > 0) {
+        const extractPublicId = (url) => {
+          const parts = url.split('/');
+          const filename = parts[parts.length - 1];
+          return filename.split('.')[0];
+        };
+
+        await Promise.all(
+          imageArray.map(async (url) => {
+            const publicId = extractPublicId(url);
+            try {
+              await cloudinary.uploader.destroy(
+                `homelink_properties/${publicId}`
+              );
+            } catch (err) {
+              console.warn('Cloudinary deletion failed:', err.message);
+            }
+          })
+        );
+      }
+    }
 
     // ✅ Delete property from database
     await prisma.property.delete({
@@ -340,5 +314,30 @@ if (property.images) {
       message: 'Failed to delete property',
       error: error.message,
     });
+  }
+};
+
+//Add favorite
+export const addFavourite = async (req, res) => {
+  try {
+    const tenantId = req.user.id;
+    const propertyId = parseInt(req.params.propertyId);
+
+    //check if it already exists
+    const existing = await prisma.favorite.findUnique({
+      where: { tenantId_propertyId: { tenantId, propertyId } },
+    });
+
+    if (existing)
+      return res.status(400).json({ message: 'Already in favourites' });
+
+    const favorite = await prisma.favorite.create({
+      data: { tenantId, propertyId },
+      include: { property: true },
+    });
+    res.status(201).json(favorite);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to add to favorites' });
   }
 };
