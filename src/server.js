@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
+import favoriteRoutes from './routes/favoriteRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 
 dotenv.config();
@@ -12,6 +13,7 @@ app.use(cors());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
+app.use('/api/favorite', favoriteRoutes);
 app.use('/api/upload', uploadRoutes);
 // app.use('/api/upload', authRoutes);
 

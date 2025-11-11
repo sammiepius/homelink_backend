@@ -317,27 +317,3 @@ export const deleteProperty = async (req, res) => {
   }
 };
 
-//Add favorite
-export const addFavourite = async (req, res) => {
-  try {
-    const tenantId = req.user.id;
-    const propertyId = parseInt(req.params.propertyId);
-
-    //check if it already exists
-    const existing = await prisma.favorite.findUnique({
-      where: { tenantId_propertyId: { tenantId, propertyId } },
-    });
-
-    if (existing)
-      return res.status(400).json({ message: 'Already in favourites' });
-
-    const favorite = await prisma.favorite.create({
-      data: { tenantId, propertyId },
-      include: { property: true },
-    });
-    res.status(201).json(favorite);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to add to favorites' });
-  }
-};
