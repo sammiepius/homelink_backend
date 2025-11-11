@@ -52,9 +52,27 @@ export const removeFavorite = async (req, res) => {
 };
 
 // ✅ Get all favorites for logged-in tenant
+// export const getFavorites = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+
+//     const favorites = await prisma.favorite.findMany({
+//       where: { userId },
+//       include: { property: true },
+//       orderBy: { createdAt: 'desc' },
+//     });
+
+//     res.json(favorites.map((fav) => fav.property));
+//   } catch (error) {
+//     console.error('Get favorites error:', error);
+//     res.status(500).json({ message: 'Failed to fetch favorites', error });
+//   }
+// };
+
 export const getFavorites = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     const favorites = await prisma.favorite.findMany({
       where: { userId },
@@ -62,28 +80,37 @@ export const getFavorites = async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json(favorites.map((fav) => fav.property));
+    // Clean up & parse images
+    const properties = favorites
+      .map((fav) => {
+        const property = fav.property;
+        if (!property) return null;
+
+        // Try parsing images if they’re JSON text
+        if (property.images) {
+          try {
+            property.images = JSON.parse(property.images);
+          } catch {
+            // If it's not JSON (single URL), wrap it in an array
+            property.images = [property.images];
+          }
+        } else {
+          property.images = [];
+        }
+
+        return property;
+      })
+      .filter(Boolean);
+
+    res.json(properties);
   } catch (error) {
     console.error('Get favorites error:', error);
-    res.status(500).json({ message: 'Failed to fetch favorites', error });
+    res
+      .status(500)
+      .json({ message: 'Failed to fetch favorites', error: error.message });
   }
 };
 
-// export const checkFavoriteStatus = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const propertyId = parseInt(req.params.propertyId);
-
-//     const favorite = await prisma.favorite.findUnique({
-//       where: { userId_propertyId: { userId, propertyId } },
-//     });
-
-//     res.json({ isFavorite: !!favorite });
-//   } catch (error) {
-//     console.error('Check favorite status error:', error);
-//     res.status(500).json({ message: 'Failed to check favorite status', error });
-//   }
-// };
 
 // GET /api/favorite/:propertyId/status
 export const getFavoriteStatus = async (req, res) => {
@@ -101,4 +128,3 @@ export const getFavoriteStatus = async (req, res) => {
     res.status(500).json({ message: 'Failed to check favorite status' });
   }
 };
-
