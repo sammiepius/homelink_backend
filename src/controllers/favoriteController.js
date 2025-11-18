@@ -51,24 +51,6 @@ export const removeFavorite = async (req, res) => {
   }
 };
 
-// ✅ Get all favorites for logged-in tenant
-// export const getFavorites = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-
-//     const favorites = await prisma.favorite.findMany({
-//       where: { userId },
-//       include: { property: true },
-//       orderBy: { createdAt: 'desc' },
-//     });
-
-//     res.json(favorites.map((fav) => fav.property));
-//   } catch (error) {
-//     console.error('Get favorites error:', error);
-//     res.status(500).json({ message: 'Failed to fetch favorites', error });
-//   }
-// };
-
 export const getFavorites = async (req, res) => {
   try {
     const userId = req.user?.id;
