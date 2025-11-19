@@ -88,6 +88,17 @@ model Favorite {
   @@unique([userId, propertyId]) // prevents duplicate favorites
 }
 
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+  status    String   @default("new") // new, read, archived
+}
+
+
 enum Role {
   LANDLORD
   TENANT

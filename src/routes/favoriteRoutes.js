@@ -4,7 +4,6 @@ import {
   addFavorite,
   removeFavorite,
   getFavorites,
-  // checkFavoriteStatus,
   getFavoriteStatus,
 } from '../controllers/favoriteController.js';
 

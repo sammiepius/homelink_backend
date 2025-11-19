@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -15,7 +16,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/favorite', favoriteRoutes);
 app.use('/api/upload', uploadRoutes);
-// app.use('/api/upload', authRoutes);
+app.use('/api/contact', contactRoutes);
 
 app.get('/', (req, res) => {
   res.send('🏡 HomeLink API is running...');
