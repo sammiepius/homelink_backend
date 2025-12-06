@@ -102,4 +102,5 @@ model ContactMessage {
 enum Role {
   LANDLORD
   TENANT
+  ADMIN
 }
