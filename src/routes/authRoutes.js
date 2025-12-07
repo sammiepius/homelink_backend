@@ -5,6 +5,7 @@ import {
   updateProfile,
   getProfile,
   changePassword,
+  adminLogin,
 } from '../controllers/authController.js';
 import multer from 'multer';
 import { protect } from '../middlewares/authMiddleware.js';
@@ -14,6 +15,7 @@ const upload = multer({ dest: 'uploads/' });
 
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/adminlogin', adminLogin);
 router.put('/update', protect, upload.single('profilePhoto'), updateProfile);
 router.get('/me', protect, getProfile);
 router.put('/change-password', protect, changePassword);

@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middlewares/authMiddleware.js';
-import { adminOnly } from '../middlewares/adminMiddleware.js';
+import { adminAuth } from '../middlewares/adminAuth.js';
 import {
   //   getAllUsers,
   getAllProperties,
@@ -12,10 +12,10 @@ import {
 const router = express.Router();
 
 // router.get("/users", protect, adminOnly, getAllUsers);
-router.get('/properties', protect, adminOnly, getAllProperties);
+router.get('/properties', protect, adminAuth, getAllProperties);
 
 // router.delete("/properties/:id", protect, adminOnly, deletePropertyByAdmin);
-router.get('/stats', protect, adminOnly, getDashboardStats);
+router.get('/stats', protect, adminAuth, getDashboardStats);
 // router.get("/reports", protect, adminOnly, getReports);
 
 export default router;
