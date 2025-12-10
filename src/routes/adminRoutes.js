@@ -6,6 +6,7 @@ import {
   getAllProperties,
   //   deletePropertyByAdmin,
   getDashboardStats,
+  getAdminStats
   //   getReports
 } from '../controllers/adminController.js';
 
@@ -16,6 +17,7 @@ router.get('/properties', protect, adminAuth, getAllProperties);
 
 // router.delete("/properties/:id", protect, adminOnly, deletePropertyByAdmin);
 router.get('/stats', protect, adminAuth, getDashboardStats);
+router.get('/adminstats', protect, adminAuth, getAdminStats);
 // router.get("/reports", protect, adminOnly, getReports);
 
 export default router;

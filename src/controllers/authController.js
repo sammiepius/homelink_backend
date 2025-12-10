@@ -175,10 +175,10 @@ export const changePassword = async (req, res) => {
   }
 };
 
+
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -196,9 +196,18 @@ export const adminLogin = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ message: 'Admin login successful', token });
+    return res.json({
+      message: 'Admin login successful',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      },
+    });
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({ message: 'Server error', error });
+    res.status(500).json({ message: 'Server error' });
   }
 };

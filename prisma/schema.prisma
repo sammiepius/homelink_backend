@@ -73,6 +73,9 @@ model Property {
   landlordId  Int
   landlord    User         @relation("UserProperties", fields: [landlordId], references: [id], onDelete: Cascade)
   favorites   Favorite[]   @relation("PropertyFavorites")
+   // NEW FIELDS
+  approved    Boolean     @default(false)
+  isActive    Boolean     @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
