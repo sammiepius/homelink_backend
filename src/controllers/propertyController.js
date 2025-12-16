@@ -51,20 +51,42 @@ export const createProperty = async (req, res) => {
 };
 
 // Get all properties (for listing page)
-export const getAllProperties = async (req, res) => {
+// export const getAllProperties = async (req, res) => {
+//   try {
+//     const properties = await prisma.property.findMany({
+//       include: { landlord: { select: { id: true, name: true, email: true } } },
+//       orderBy: { createdAt: 'desc' },
+//     });
+//     const formatted = properties.map((p) => ({
+//       ...p,
+//       images: p.images ? JSON.parse(p.images) : [],
+//     }));
+//     res.status(200).json(formatted);
+//   } catch (error) {
+//     console.error('Error fetching properties:', error);
+//     res.status(500).json({ message: 'Failed to fetch properties' });
+//   }
+// };
+
+export const getMarketplaceProperties = async (req, res) => {
   try {
     const properties = await prisma.property.findMany({
-      include: { landlord: { select: { id: true, name: true, email: true } } },
+      where: {
+        approved: true,
+        isActive: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
+
     const formatted = properties.map((p) => ({
       ...p,
       images: p.images ? JSON.parse(p.images) : [],
     }));
+
     res.status(200).json(formatted);
   } catch (error) {
-    console.error('Error fetching properties:', error);
-    res.status(500).json({ message: 'Failed to fetch properties' });
+    console.error('Error fetching marketplace properties', error);
+    res.status(500).json({ message: 'Failed to load marketplace properties' });
   }
 };
 
@@ -316,4 +338,3 @@ export const deleteProperty = async (req, res) => {
     });
   }
 };
-

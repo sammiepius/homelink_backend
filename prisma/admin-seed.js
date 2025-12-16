@@ -4,20 +4,20 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const hashedPassword = await bcrypt.hash("AdminPassword123!", 10);
+  const hashedPassword = await bcrypt.hash('AdminPassword123!', 10);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@homelink.com" },
+    where: { email: 'admin@homelink.com' },
     update: {},
     create: {
-      name: "HomeLink Admin",
-      email: "admin@homelink.com",
+      name: 'HomeLink Admin',
+      email: 'admin@homelink.com',
       password: hashedPassword,
-      role: "ADMIN",
+      role: 'ADMIN',
     },
   });
 
-  console.log("Admin created:", admin);
+  console.log('Admin created:', admin);
 }
 
 main()
