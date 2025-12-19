@@ -1,19 +1,7 @@
 // import prisma from '../../src/prismaClient.js';
 
 import prisma from '../../src/prismaClient.js';
-
-export const getDashboardStats = async (req, res) => {
-  try {
-    const totalUsers = await prisma.user.count();
-    const totalProperties = await prisma.property.count();
-    const totalMessages = await prisma.contactMessage.count();
-
-    res.json({ totalUsers, totalProperties, totalMessages });
-  } catch (error) {
-    console.error('Dashboard stats error:', error);
-    res.status(500).json({ message: 'Error getting dashboard stats' });
-  }
-};
+import { logAudit } from '../util/auditLogger.js';
 
 export const getAdminStats = async (req, res) => {
   try {
@@ -70,6 +58,45 @@ export const getAdminStats = async (req, res) => {
   }
 };
 
+export const getDashboardCharts = async (req, res) => {
+  try {
+    // USERS GROUPED BY MONTH
+    const users = await prisma.user.findMany({
+      select: { createdAt: true },
+    });
+
+    // PROPERTIES GROUPED BY MONTH
+    const properties = await prisma.property.findMany({
+      select: { createdAt: true },
+    });
+
+    const groupByMonth = (items) => {
+      const map = {};
+
+      items.forEach((item) => {
+        const month = new Date(item.createdAt).toLocaleString('en-US', {
+          month: 'short',
+        });
+
+        map[month] = (map[month] || 0) + 1;
+      });
+
+      return Object.entries(map).map(([month, count]) => ({
+        month,
+        count,
+      }));
+    };
+
+    res.json({
+      users: groupByMonth(users),
+      properties: groupByMonth(properties),
+    });
+  } catch (error) {
+    console.error('Dashboard charts error:', error);
+    res.status(500).json({ message: 'Failed to load chart stats' });
+  }
+};
+
 export const getAllProperties = async (req, res) => {
   try {
     const properties = await prisma.property.findMany({
@@ -83,34 +110,39 @@ export const getAllProperties = async (req, res) => {
   }
 };
 
-// export const deleteProperty = async (req, res) => {
+// export const getAllUsers = async (req, res) => {
 //   try {
-//     const id = parseInt(req.params.id);
-
-//     await prisma.property.delete({
-//       where: { id },
+//     const users = await prisma.user.findMany({
+//       orderBy: { createdAt: 'desc' },
 //     });
 
-//     res.json({ message: 'Property deleted' });
+//     res.json(users);
 //   } catch (error) {
-//     res.status(500).json({ message: 'Failed to delete property' });
+//     res.status(500).json({ message: 'Failed to fetch users' });
 //   }
 // };
 
-export const deleteProperty = async (req, res) => {
+// export const getMessages = async (req, res) => {
+//   try {
+//     const messages = await prisma.contactMessage.findMany({
+//       orderBy: { createdAt: 'desc' },
+//     });
+
+//     res.json(messages);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Failed to fetch messages' });
+//   }
+// };
+export const adminDeleteProperty = async (req, res) => {
   try {
     const { id } = req.params;
-    const landlordId = req.user.id; // from auth middleware
 
-    // ✅ Validate and parse the ID safely
     if (!id || isNaN(id)) {
-      return res
-        .status(400)
-        .json({ message: 'Invalid or missing property ID' });
+      return res.status(400).json({ message: 'Invalid property ID' });
     }
-    const propertyId = parseInt(id, 10);
 
-    // ✅ Find the property
+    const propertyId = Number(id);
+
     const property = await prisma.property.findUnique({
       where: { id: propertyId },
     });
@@ -119,185 +151,67 @@ export const deleteProperty = async (req, res) => {
       return res.status(404).json({ message: 'Property not found' });
     }
 
-    // ✅ Check ownership
-    if (property.landlordId !== landlordId) {
-      return res
-        .status(403)
-        .json({ message: 'Not authorized to delete this property' });
-    }
-
-    // ✅ (Optional) Delete images from Cloudinary if applicable
-    // Optional: Delete images from Cloudinary if stored there
-    if (property.images) {
-      let imageArray = property.images;
-
-      // If stored as JSON string, parse it
-      if (typeof imageArray === 'string') {
-        try {
-          imageArray = JSON.parse(imageArray);
-        } catch (err) {
-          console.warn('Image JSON parsing failed:', err.message);
-          imageArray = [];
-        }
-      }
-
-      if (Array.isArray(imageArray) && imageArray.length > 0) {
-        const extractPublicId = (url) => {
-          const parts = url.split('/');
-          const filename = parts[parts.length - 1];
-          return filename.split('.')[0];
-        };
-
-        await Promise.all(
-          imageArray.map(async (url) => {
-            const publicId = extractPublicId(url);
-            try {
-              await cloudinary.uploader.destroy(
-                `homelink_properties/${publicId}`
-              );
-            } catch (err) {
-              console.warn('Cloudinary deletion failed:', err.message);
-            }
-          })
-        );
-      }
-    }
-
-    // ✅ Delete property from database
-    await prisma.property.delete({
-      where: { id: propertyId },
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Property deleted successfully',
-    });
-  } catch (error) {
-    console.error('Property deletion error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to delete property',
-      error: error.message,
-    });
-  }
-};
-export const adminDeleteProperty = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Validate ID
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ message: "Invalid or missing property ID" });
-    }
-    const propertyId = parseInt(id, 10);
-
-    // Find property
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
-    });
-
-    if (!property) {
-      return res.status(404).json({ message: "Property not found" });
-    }
+    // 🔥 ADMIN CAN DELETE ANY PROPERTY — NO OWNERSHIP CHECK
 
     // Optional: delete images from Cloudinary
     if (property.images) {
-      let imageArray = property.images;
+      let images = property.images;
 
-      if (typeof imageArray === "string") {
+      if (typeof images === 'string') {
         try {
-          imageArray = JSON.parse(imageArray);
+          images = JSON.parse(images);
         } catch {
-          imageArray = [];
+          images = [];
         }
       }
 
-      if (Array.isArray(imageArray)) {
-        const extractPublicId = (url) => {
-          const parts = url.split("/");
-          const filename = parts[parts.length - 1];
-          return filename.split(".")[0];
-        };
+      if (Array.isArray(images)) {
+        const extractPublicId = (url) => url.split('/').pop().split('.')[0];
 
         await Promise.all(
-          imageArray.map(async (url) => {
-            const publicId = extractPublicId(url);
+          images.map(async (url) => {
             try {
               await cloudinary.uploader.destroy(
-                `homelink_properties/${publicId}`
+                `homelink_properties/${extractPublicId(url)}`
               );
             } catch (err) {
-              console.warn("Cloudinary deletion failed:", err.message);
+              console.warn('Cloudinary delete failed:', err.message);
             }
           })
         );
       }
     }
 
-    // Delete from database
     await prisma.property.delete({
       where: { id: propertyId },
     });
 
-    return res.status(200).json({
+    // ✅ AUDIT LOG
+    await logAudit({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'DELETE_PROPERTY',
+      entity: 'Property',
+      entityId: property.id,
+      metadata: {
+        title: property.title,
+        landlordId: property.landlordId,
+      },
+      ipAddress: req.ip,
+    });
+
+    res.json({
       success: true,
-      message: "Property deleted successfully by admin",
+      message: 'Property deleted by admin',
     });
-
   } catch (error) {
-    console.error("Admin delete property error:", error);
-    return res.status(500).json({
+    console.error('Admin delete property error:', error);
+    res.status(500).json({
       success: false,
-      message: "Failed to delete property",
-      error: error.message,
+      message: 'Failed to delete property',
     });
   }
 };
-
-
-export const getAllUsers = async (req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch users' });
-  }
-};
-
-export const getMessages = async (req, res) => {
-  try {
-    const messages = await prisma.contactMessage.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch messages' });
-  }
-};
-
-// Approve a property (make it eligible to be shown publicly)
-// export const approveProperty = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-
-//     const property = await prisma.property.update({
-//       where: { id: Number(id) },
-//       data: { approved: true },
-//     });
-
-//     res.json({
-//       message: 'Property approved successfully.',
-//       property,
-//     });
-//   } catch (error) {
-//     console.error('Approve property error:', error);
-//     res.status(500).json({ message: 'Error approving property' });
-//   }
-// };
 
 export const approveProperty = async (req, res) => {
   try {
@@ -320,6 +234,19 @@ export const approveProperty = async (req, res) => {
     const updated = await prisma.property.update({
       where: { id: Number(id) },
       data: { approved: true },
+    });
+
+    await logAudit({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'APPROVE_PROPERTY',
+      entity: 'Property',
+      entityId: updated.id,
+      metadata: {
+        title: updated.title,
+        landlordId: updated.landlordId,
+      },
+      ipAddress: req.ip,
     });
 
     return res.json({
@@ -357,6 +284,18 @@ export const rejectProperty = async (req, res) => {
         rejected: true,
         isActive: false, // auto-disable rejected property
       },
+    });
+
+    await logAudit({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'REJECT_PROPERTY',
+      entity: 'Property',
+      entityId: updated.id,
+      metadata: {
+        title: updated.title,
+      },
+      ipAddress: req.ip,
     });
 
     return res.json({
@@ -419,6 +358,18 @@ export const toggleActiveProperty = async (req, res) => {
       data: { isActive },
     });
 
+    await logAudit({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'TOGGLE_PROPERTY',
+      entity: 'Property',
+      entityId: updated.id,
+      metadata: {
+        title: updated.title,
+      },
+      ipAddress: req.ip,
+    });
+
     return res.json({
       message: `Property is now ${isActive ? 'Active' : 'Inactive'}.`,
       property: updated,
@@ -457,3 +408,108 @@ export const toggleActiveProperty = async (req, res) => {
 //     res.status(500).json({ message: 'Error toggling active state' });
 //   }
 // };
+// export const getAuditLogs = async (req, res) => {
+//   const logs = await prisma.auditLog.findMany({
+//     orderBy: { createdAt: 'desc' },
+//     take: 50,
+//     include: {
+//       actor: {
+//         select: { name: true, email: true },
+//       },
+//     },
+//   });
+
+//   res.json(logs);
+// };
+
+export const getAuditLogsss = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const action = req.query.action || 'all';
+
+    const where = {
+      ...(action !== 'all' && { action }),
+      ...(search && {
+        metadata: {
+          path: ['title'],
+          string_contains: search,
+        },
+      }),
+    };
+
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          actor: {
+            select: { name: true },
+          },
+        },
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+
+    res.json({
+      logs,
+      pagination: {
+        page,
+        totalPages: Math.ceil(total / limit),
+        total,
+      },
+    });
+  } catch (err) {
+    console.error('Audit log error:', err);
+    res.status(500).json({ message: 'Failed to fetch audit logs' });
+  }
+};
+
+export const getRecentActivities = async (req, res) => {
+  try {
+    const activities = await prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 4,
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    res.json({ activities });
+  } catch (error) {
+    console.error('Recent activities error:', error);
+    res.status(500).json({ message: 'Failed to fetch activities' });
+  }
+};
+export const getRecentActivity = async (req, res) => {
+  try {
+    const activities = await prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        actorRole: true,
+        action: true,
+        entity: true,
+        entityId: true,
+        metadata: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(200).json(activities);
+  } catch (error) {
+    console.error('Recent activity error:', error);
+    res.status(500).json({ message: 'Failed to fetch recent activities' });
+  }
+};

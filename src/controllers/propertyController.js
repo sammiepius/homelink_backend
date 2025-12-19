@@ -1,4 +1,5 @@
 import prisma from '../../src/prismaClient.js';
+import { logAudit, logAudits } from '../util/auditLogger.js';
 import cloudinary from '../util/cloudinary.js';
 
 export const createProperty = async (req, res) => {
@@ -37,6 +38,18 @@ export const createProperty = async (req, res) => {
         bedrooms: bedrooms ? parseInt(bedrooms) : null,
         bathrooms: bathrooms ? parseInt(bathrooms) : null,
         landlordId,
+      },
+    });
+
+    // ✅ AUDIT LOG
+    await logAudits({
+      req,
+      action: 'CREATE_PROPERTY',
+      entity: 'Property',
+      entityId: newProperty.id,
+      metadata: {
+        title: newProperty.title,
+        price: newProperty.price,
       },
     });
 
@@ -186,6 +199,18 @@ export const updateProperty = async (req, res) => {
       },
     });
 
+    // ✅ AUDIT LOG
+    await logAudits({
+      req,
+      action: 'CREATE_PROPERTY',
+      entity: 'Property',
+      entityId: updatedProperty.id,
+      metadata: {
+        title: updatedProperty.title,
+        price: updatedProperty.price,
+      },
+    });
+
     res.status(200).json({
       message: 'Property updated successfully',
       property: updatedProperty,
@@ -324,6 +349,19 @@ export const deleteProperty = async (req, res) => {
     await prisma.property.delete({
       where: { id: propertyId },
     });
+
+    // ✅ AUDIT LOG
+    await logAudits({
+      req,
+      action: 'CREATE_PROPERTY',
+      entity: 'Property',
+      entityId: property.id,
+      metadata: {
+        title: property.title,
+        // price: property.price,
+      },
+    });
+
 
     return res.status(200).json({
       success: true,

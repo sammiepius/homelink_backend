@@ -8,7 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 // model User {
 //   id         Int        @id @default(autoincrement())
 //   name       String
@@ -38,56 +37,57 @@ datasource db {
 //   updatedAt   DateTime @updatedAt
 // }
 
-
 // enum Role {
 //   LANDLORD
 //   TENANT
 // }
 
 model User {
-  id           Int         @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   name         String
-  email        String      @unique
+  email        String  @unique
   password     String
-  role         Role        @default(TENANT)
-  phone        String?     // optional field
-  profilePhoto String?     // optional photo
+  role         Role    @default(TENANT)
+  phone        String? // optional field
+  profilePhoto String? // optional photo
 
   // Relationships
-  properties   Property[]  @relation("UserProperties")
-  favorites    Favorite[]  @relation("UserFavorites")
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  properties Property[] @relation("UserProperties")
+  favorites  Favorite[] @relation("UserFavorites")
+  auditLogs  AuditLog[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 model Property {
-  id          Int         @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   description String
   price       Float
   location    String
-  images      String?      @db.Text
+  images      String?    @db.Text
   type        String
   bedrooms    Int?
   bathrooms   Int?
   landlordId  Int
-  landlord    User         @relation("UserProperties", fields: [landlordId], references: [id], onDelete: Cascade)
-  favorites   Favorite[]   @relation("PropertyFavorites")
-   // NEW FIELDS
-  approved    Boolean     @default(false)
-  isActive    Boolean     @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  landlord    User       @relation("UserProperties", fields: [landlordId], references: [id], onDelete: Cascade)
+  favorites   Favorite[] @relation("PropertyFavorites")
+  // NEW FIELDS
+  approved    Boolean    @default(false)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Favorite {
-  id          Int        @id @default(autoincrement())
-  userId      Int
-  propertyId  Int
-  user        User        @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
-  property    Property    @relation("PropertyFavorites", fields: [propertyId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  propertyId Int
+  user       User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation("PropertyFavorites", fields: [propertyId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime    @default(now())
+  createdAt DateTime @default(now())
+
   @@unique([userId, propertyId]) // prevents duplicate favorites
 }
 
@@ -99,6 +99,20 @@ model ContactMessage {
   message   String
   createdAt DateTime @default(now())
   status    String   @default("new") // new, read, archived
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    Int?
+  actorRole  String
+  action     String
+  entity     String
+  entityId   Int?
+  metadata   String?  @db.LongText   // ❗ NOT Json
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
 }
 
 

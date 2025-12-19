@@ -10,7 +10,7 @@ async function main() {
     where: { email: 'admin@homelink.com' },
     update: {},
     create: {
-      name: 'HomeLink Admin',
+      name: 'Admin',
       email: 'admin@homelink.com',
       password: hashedPassword,
       role: 'ADMIN',
