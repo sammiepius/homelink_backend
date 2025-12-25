@@ -13,8 +13,10 @@ import {
   getDashboardCharts,
   // getAuditLogs,
   getRecentActivities,
-  getAuditLogsss,
-  getRecentActivity,
+  getAuditLogs,
+  getAdminPropertyById,
+  getAllUsers,
+  // getRecentActivity,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -36,8 +38,11 @@ router.patch(
 );
 // router.get('/audit-logs', protect, adminAuth, getAuditLogs);
 router.get('/activities/recent', protect, adminAuth, getRecentActivities);
-router.get('/audit-log', protect, adminAuth, getAuditLogsss);
+router.get('/audit-log', protect, adminAuth, getAuditLogs);
+router.get('/property/:id', protect, adminAuth, getAdminPropertyById);
+// routes/adminUserRoutes.js
+router.get('/users', protect, adminAuth, getAllUsers);
 
-router.get('/recent', protect, getRecentActivity);
+// router.get('/recent', protect, getRecentActivity);
 
 export default router;

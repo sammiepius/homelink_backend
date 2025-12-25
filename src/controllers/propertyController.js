@@ -202,7 +202,7 @@ export const updateProperty = async (req, res) => {
     // ✅ AUDIT LOG
     await logAudits({
       req,
-      action: 'CREATE_PROPERTY',
+      action: 'UPDATED_PROPERTY',
       entity: 'Property',
       entityId: updatedProperty.id,
       metadata: {
@@ -353,7 +353,7 @@ export const deleteProperty = async (req, res) => {
     // ✅ AUDIT LOG
     await logAudits({
       req,
-      action: 'CREATE_PROPERTY',
+      action: 'DELETE_PROPERTY',
       entity: 'Property',
       entityId: property.id,
       metadata: {

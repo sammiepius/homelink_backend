@@ -361,7 +361,7 @@ export const toggleActiveProperty = async (req, res) => {
     await logAudit({
       actorId: req.user.id,
       actorRole: req.user.role,
-      action: 'TOGGLE_PROPERTY',
+      action: 'ACTIVATE_PROPERTY',
       entity: 'Property',
       entityId: updated.id,
       metadata: {
@@ -422,7 +422,7 @@ export const toggleActiveProperty = async (req, res) => {
 //   res.json(logs);
 // };
 
-export const getAuditLogsss = async (req, res) => {
+export const getAuditLogs = async (req, res) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = 20;
@@ -472,15 +472,21 @@ export const getAuditLogsss = async (req, res) => {
 export const getRecentActivities = async (req, res) => {
   try {
     const activities = await prisma.auditLog.findMany({
+      where: {
+        action: {
+          in: [
+            'APPROVE_PROPERTY',
+            'REJECT_PROPERTY',
+            'DELETE_PROPERTY',
+            'CREATE_PROPERTY',
+          ],
+        },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 4,
+      take: 5,
       include: {
         actor: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
+          select: { id: true, name: true, role: true },
         },
       },
     });
@@ -491,25 +497,79 @@ export const getRecentActivities = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch activities' });
   }
 };
-export const getRecentActivity = async (req, res) => {
+// export const getRecentActivity = async (req, res) => {
+//   try {
+//     const activities = await prisma.auditLog.findMany({
+//       orderBy: { createdAt: 'desc' },
+//       take: 20,
+//       select: {
+//         id: true,
+//         actorRole: true,
+//         action: true,
+//         entity: true,
+//         entityId: true,
+//         metadata: true,
+//         createdAt: true,
+//       },
+//     });
+
+//     res.status(200).json(activities);
+//   } catch (error) {
+//     console.error('Recent activity error:', error);
+//     res.status(500).json({ message: 'Failed to fetch recent activities' });
+//   }
+// };
+
+export const getAdminPropertyById = async (req, res) => {
   try {
-    const activities = await prisma.auditLog.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: {
-        id: true,
-        actorRole: true,
-        action: true,
-        entity: true,
-        entityId: true,
-        metadata: true,
-        createdAt: true,
+    const { id } = req.params;
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid property ID' });
+    }
+
+    const property = await prisma.property.findUnique({
+      where: { id: Number(id) },
+      include: {
+        landlord: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
-    res.status(200).json(activities);
+    if (!property) {
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    res.json({ property });
   } catch (error) {
-    console.error('Recent activity error:', error);
-    res.status(500).json({ message: 'Failed to fetch recent activities' });
+    console.error('Admin get property error:', error);
+    res.status(500).json({ message: 'Failed to fetch property' });
+  }
+};
+
+// controllers/adminUserController.js
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        // isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch users' });
   }
 };
