@@ -42,22 +42,46 @@ datasource db {
 //   TENANT
 // }
 
+// model User {
+//   id           Int     @id @default(autoincrement())
+//   name         String
+//   email        String  @unique
+//   password     String
+//   role         Role    @default(TENANT)
+//   phone        String? // optional field
+//   profilePhoto String? // optional photo
+
+//   // Relationships
+//   properties Property[] @relation("UserProperties")
+//   favorites  Favorite[] @relation("UserFavorites")
+//   auditLogs  AuditLog[]
+//   createdAt  DateTime   @default(now())
+//   updatedAt  DateTime   @updatedAt
+// }
+
 model User {
-  id           Int     @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   name         String
-  email        String  @unique
+  email        String   @unique
   password     String
-  role         Role    @default(TENANT)
-  phone        String? // optional field
-  profilePhoto String? // optional photo
+  role         Role     @default(TENANT)
+
+  phone        String?
+  profilePhoto String?
+
+  // 🔐 Admin & Security
+  isActive     Boolean  @default(true)
+  lastLogin    DateTime?
 
   // Relationships
-  properties Property[] @relation("UserProperties")
-  favorites  Favorite[] @relation("UserFavorites")
-  auditLogs  AuditLog[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  properties   Property[] @relation("UserProperties")
+  favorites    Favorite[] @relation("UserFavorites")
+  auditLogs    AuditLog[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
+
 
 model Property {
   id          Int        @id @default(autoincrement())

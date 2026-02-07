@@ -553,23 +553,95 @@ export const getAdminPropertyById = async (req, res) => {
 };
 
 // controllers/adminUserController.js
+// export const getAllUsers = async (req, res) => {
+//   try {
+//     const users = await prisma.user.findMany({
+//       select: {
+//         id: true,
+//         name: true,
+//         email: true,
+//         role: true,
+//         // isActive: true,
+//         createdAt: true,
+//       },
+//       orderBy: { createdAt: 'desc' },
+//     });
+
+//     res.json(users);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Failed to fetch users' });
+//   }
+// };
+
+/**
+ * GET /admin/users
+ */
 export const getAllUsers = async (req, res) => {
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+      lastLogin: true,
+    },
+  });
+
+  res.json(users);
+};
+
+/**
+ * GET /admin/users/:id
+ */
+export const getUserDetails = async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        // isActive: true,
-        createdAt: true,
+    const userId = Number(req.params.id);
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        properties: {
+          orderBy: { createdAt: 'desc' },
+        },
+        auditLogs: {
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
       },
-      orderBy: { createdAt: 'desc' },
     });
 
-    res.json(users);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(user);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to fetch users' });
+    console.error('❌ getUserDetails error:', error);
+    res.status(500).json({ message: 'Failed to fetch user details' });
   }
+};
+
+/**
+ * PATCH /admin/users/:id/suspend
+ */
+export const toggleUserStatus = async (req, res) => {
+  const id = Number(req.params.id);
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { isActive: !user.isActive },
+  });
+
+  res.json(updated);
 };

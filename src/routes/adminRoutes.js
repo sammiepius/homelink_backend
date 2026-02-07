@@ -16,6 +16,8 @@ import {
   getAuditLogs,
   getAdminPropertyById,
   getAllUsers,
+  getUserDetails,
+  toggleUserStatus,
   // getRecentActivity,
 } from '../controllers/adminController.js';
 
@@ -41,7 +43,10 @@ router.get('/activities/recent', protect, adminAuth, getRecentActivities);
 router.get('/audit-log', protect, adminAuth, getAuditLogs);
 router.get('/property/:id', protect, adminAuth, getAdminPropertyById);
 // routes/adminUserRoutes.js
+// router.get('/users', protect, adminAuth, getAllUsers);
 router.get('/users', protect, adminAuth, getAllUsers);
+router.get('/users/:id', protect, adminAuth, getUserDetails);
+router.patch('/users/:id/suspend', protect, adminAuth, toggleUserStatus);
 
 // router.get('/recent', protect, getRecentActivity);
 

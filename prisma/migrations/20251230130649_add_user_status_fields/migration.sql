@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE `contactmessage` MODIFY `status` VARCHAR(191) NOT NULL DEFAULT 'new';
+
+-- AlterTable
+ALTER TABLE `user` ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN `lastLogin` DATETIME(3) NULL,
+    MODIFY `role` ENUM('LANDLORD', 'TENANT', 'ADMIN') NOT NULL DEFAULT 'TENANT';
